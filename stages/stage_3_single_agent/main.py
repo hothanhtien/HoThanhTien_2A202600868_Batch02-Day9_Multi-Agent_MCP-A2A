@@ -172,18 +172,41 @@ def check_compliance_requirements(industry: str, company_size: str) -> str:
     )
 
 
-TOOLS = [search_legal_database, calculate_penalty, check_compliance_requirements]
+@tool
+def search_case_law(keywords: str) -> str:
+    """Tìm kiếm án lệ nổi tiếng theo từ khóa.
+
+    Args:
+        keywords: Từ khóa tìm kiếm (ví dụ: breach, negligence, contract)
+    """
+    cases = {
+        "breach": "Hadley v. Baxendale (1854) - Consequential damages phải có thể dự đoán trước",
+        "negligence": "Donoghue v. Stevenson (1932) - Nghĩa vụ chăm sóc (Duty of care)",
+        "contract": "Carlill v. Carbolic Smoke Ball Co (1893) - Hợp đồng đơn phương",
+        "privacy": "Griswold v. Connecticut (1965) - Quyền riêng tư cơ bản",
+        "tax": "Gregory v. Helvering (1935) - Phân biệt tránh thuế hợp pháp và trốn thuế",
+    }
+    keywords_lower = keywords.lower()
+    for key, case in cases.items():
+        if key in keywords_lower:
+            return case
+    return "Không tìm thấy án lệ phù hợp với từ khóa này"
+
+
+TOOLS = [search_legal_database, calculate_penalty, check_compliance_requirements, search_case_law]
 
 QUESTION = (
-    "A tech startup with $5M revenue was caught sharing user data without consent "
-    "and failed to pay taxes on overseas revenue. What are all the legal consequences?"
+    "Một startup công nghệ có doanh thu 5 triệu USD bị phát hiện chia sẻ dữ liệu người dùng "
+    "mà không có sự đồng ý và không nộp thuế cho doanh thu ở nước ngoài. "
+    "Tất cả hậu quả pháp lý là gì?"
 )
 
 SYSTEM_PROMPT = (
-    "You are a legal analyst agent. You have access to tools for searching legal databases, "
-    "calculating penalties, and checking compliance requirements. Use these tools to build "
-    "a comprehensive analysis. Search for each legal area separately — data privacy, tax, "
-    "and compliance. Keep your final answer under 500 words."
+    "Bạn là chuyên gia phân tích pháp lý. Bạn có quyền truy cập vào các công cụ tra cứu "
+    "cơ sở dữ liệu pháp luật, tính toán hình phạt và kiểm tra yêu cầu tuân thủ. "
+    "Hãy dùng các công cụ này để xây dựng phân tích toàn diện. "
+    "Tìm kiếm từng lĩnh vực pháp lý riêng biệt — quyền riêng tư dữ liệu, thuế và tuân thủ. "
+    "Trả lời bằng tiếng Việt, không quá 500 từ."
 )
 
 

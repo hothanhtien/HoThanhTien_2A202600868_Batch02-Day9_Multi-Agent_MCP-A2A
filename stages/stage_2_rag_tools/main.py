@@ -81,6 +81,19 @@ LEGAL_KNOWLEDGE = [
             "public interest (Winter v. Natural Resources Defense Council, 2008)."
         ),
     },
+    {
+        "id": "labor_law",
+        "keywords": ["lao động", "sa thải", "hợp đồng lao động", "labor", "termination", "employee"],
+        "text": (
+            "Theo Bộ luật Lao động Việt Nam 2019, người sử dụng lao động có thể "
+            "đơn phương chấm dứt hợp đồng trong các trường hợp: (1) người lao động "
+            "thường xuyên không hoàn thành công việc theo hợp đồng; (2) bị ốm đau, tai nạn đã điều trị "
+            "12 tháng liên tục với hợp đồng không xác định thời hạn mà chưa phục hồi; "
+            "(3) thiên tai, hỏa hoạn, dịch bệnh nguy hiểm; (4) người lao động đủ tuổi nghỉ hưu. "
+            "Khi sa thải trái luật, người lao động được nhận lại làm việc và bồi thường ít nhất "
+            "2 tháng lương cho mỗi năm công tác."
+        ),
+    },
 ]
 
 
@@ -135,9 +148,25 @@ def calculate_damages(breach_type: str, contract_value: float) -> str:
     )
 
 
-TOOLS = [search_legal_database, calculate_damages]
+@tool
+def check_statute_of_limitations(case_type: str) -> str:
+    """Kiểm tra thời hiệu khởi kiện theo loại vụ án.
 
-QUESTION = "What are the legal consequences if a company breaches a non-disclosure agreement?"
+    Args:
+        case_type: Loại vụ án (contract, tort, property, labor)
+    """
+    limits = {
+        "contract": "4 năm (UCC § 2-725)",
+        "tort": "2-3 năm tùy bang/quốc gia",
+        "property": "5 năm",
+        "labor": "1 năm kể từ ngày chấm dứt hợp đồng (Bộ luật Lao động VN 2019)",
+    }
+    return limits.get(case_type.lower(), "Không xác định — cần tư vấn luật sư")
+
+
+TOOLS = [search_legal_database, calculate_damages, check_statute_of_limitations]
+
+QUESTION = "Hậu quả pháp lý là gì nếu một công ty vi phạm thỏa thuận bảo mật thông tin (NDA)?"
 
 
 async def main():
@@ -161,10 +190,9 @@ async def main():
     messages = [
         SystemMessage(
             content=(
-                "You are a legal expert with access to a legal knowledge base and a damage "
-                "calculator. Use the tools provided to ground your analysis in specific statutes "
-                "and case law. Always search the database before answering. "
-                "Keep your final response under 400 words."
+                "Bạn là chuyên gia pháp lý có quyền truy cập vào cơ sở dữ liệu pháp luật và "
+                "công cụ tính toán thiệt hại. Hãy dùng các tools để tra cứu điều luật cụ thể "
+                "trước khi trả lời. Trả lời bằng tiếng Việt, không quá 400 từ."
             )
         ),
         HumanMessage(content=QUESTION),

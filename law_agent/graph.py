@@ -51,44 +51,30 @@ class LawState(TypedDict):
 # Node implementations
 # ---------------------------------------------------------------------------
 
-async def analyze_law(state: LawState) -> dict:
-    """LLM analysis from a contract / general law perspective."""
-    llm = get_llm()
-    messages = [
-        SystemMessage(
-            content=(
-                "You are a senior corporate litigation attorney specialising in contract law, "
-                "tort law, and general business law. Analyse the legal aspects of the question "
-                "thoroughly, covering relevant statutes, case law principles, and liability exposure."
-            )
-        ),
-        HumanMessage(content=state["question"]),
-    ]
-    result = await llm.ainvoke(messages)
-    return {"law_analysis": result.content}
+async def analyze_and_route(state: LawState) -> dict:
+    """Gộp analyze_law + check_routing thành 1 LLM call — giảm latency ~10-15s.
 
-
-async def check_routing(state: LawState) -> dict:
-    """Determine whether tax and/or compliance sub-agents are needed.
-
-    Returns updated state flags so the routing function can read them.
-    If delegation depth is already at the max, skip further delegation.
+    Trả về cả law_analysis lẫn routing flags trong một lần gọi duy nhất.
     """
     depth = state.get("delegation_depth", 0)
     if depth >= MAX_DELEGATION_DEPTH:
         logger.info("Max delegation depth reached (%d); skipping sub-agents", depth)
-        return {"needs_tax": False, "needs_compliance": False}
+        return {"law_analysis": "", "needs_tax": False, "needs_compliance": False}
 
     llm = get_llm()
     messages = [
         SystemMessage(
             content=(
-                'You are a legal routing expert. Based on the question, decide whether '
-                'specialist sub-agents are needed.\n'
-                'Reply with ONLY valid JSON — no markdown, no extra text:\n'
-                '{"needs_tax": <true|false>, "needs_compliance": <true|false>}\n\n'
-                'needs_tax = true  → question involves tax law, IRS, tax evasion, penalties\n'
-                'needs_compliance = true → question involves regulatory compliance, SEC, SOX, AML, FCPA'
+                "Bạn là luật sư kiện tụng doanh nghiệp cấp cao. Hãy thực hiện 2 việc:\n"
+                "1. Phân tích pháp lý câu hỏi (luật hợp đồng, trách nhiệm, rủi ro).\n"
+                "2. Quyết định cần gọi sub-agent nào.\n\n"
+                "Trả lời theo định dạng JSON:\n"
+                "{\n"
+                '  "analysis": "<phân tích pháp lý bằng tiếng Việt>",\n'
+                '  "needs_tax": <true nếu câu hỏi liên quan thuế/IRS/trốn thuế>,\n'
+                '  "needs_compliance": <true nếu liên quan SEC/SOX/AML/FCPA/GDPR>\n'
+                "}\n"
+                "Chỉ trả về JSON, không thêm markdown hay text khác."
             )
         ),
         HumanMessage(content=state["question"]),
@@ -96,7 +82,6 @@ async def check_routing(state: LawState) -> dict:
     result = await llm.ainvoke(messages)
     raw = result.content.strip()
 
-    # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -105,14 +90,17 @@ async def check_routing(state: LawState) -> dict:
 
     try:
         parsed = json.loads(raw)
+        law_analysis = parsed.get("analysis", raw)
+        needs_tax = bool(parsed.get("needs_tax", True))
+        needs_compliance = bool(parsed.get("needs_compliance", True))
     except json.JSONDecodeError:
-        logger.warning("Routing LLM returned non-JSON: %r — defaulting to both=True", raw)
-        parsed = {"needs_tax": True, "needs_compliance": True}
+        logger.warning("analyze_and_route returned non-JSON — using raw as analysis")
+        law_analysis = raw
+        needs_tax = True
+        needs_compliance = True
 
-    needs_tax = bool(parsed.get("needs_tax", True))
-    needs_compliance = bool(parsed.get("needs_compliance", True))
-    logger.info("Routing decision: needs_tax=%s needs_compliance=%s", needs_tax, needs_compliance)
-    return {"needs_tax": needs_tax, "needs_compliance": needs_compliance}
+    logger.info("Routing: needs_tax=%s needs_compliance=%s", needs_tax, needs_compliance)
+    return {"law_analysis": law_analysis, "needs_tax": needs_tax, "needs_compliance": needs_compliance}
 
 
 def route_to_subagents(state: LawState) -> list[Send]:
@@ -191,11 +179,11 @@ async def aggregate(state: LawState) -> dict:
     messages = [
         SystemMessage(
             content=(
-                "You are a senior legal counsel synthesising specialist analyses into a "
-                "comprehensive, well-structured response for the client. Combine the following "
-                "analyses into a cohesive answer with clear sections. Avoid redundancy. "
-                "End with a brief disclaimer that the analysis is educational and the client "
-                "should consult licensed attorneys for their specific situation."
+                "Bạn là cố vấn pháp lý cấp cao tổng hợp các phân tích chuyên gia thành "
+                "câu trả lời toàn diện, có cấu trúc rõ ràng cho khách hàng. Kết hợp các phân tích "
+                "sau đây thành câu trả lời mạch lạc với các mục rõ ràng, tránh trùng lặp. "
+                "Kết thúc bằng một tuyên bố miễn trách ngắn gọn rằng phân tích chỉ mang tính giáo dục. "
+                "Trả lời bằng tiếng Việt."
             )
         ),
         HumanMessage(content=combined),
@@ -212,19 +200,16 @@ def create_graph():
     """Build and compile the Law Agent StateGraph."""
     graph = StateGraph(LawState)
 
-    graph.add_node("analyze_law", analyze_law)
-    graph.add_node("check_routing", check_routing)
+    graph.add_node("analyze_and_route", analyze_and_route)
     graph.add_node("call_tax", call_tax)
     graph.add_node("call_compliance", call_compliance)
     graph.add_node("aggregate", aggregate)
 
-    graph.set_entry_point("analyze_law")
-    graph.add_edge("analyze_law", "check_routing")
+    graph.set_entry_point("analyze_and_route")
 
-    # Conditional parallel dispatch: after check_routing, route_to_subagents
-    # returns a list of Send objects (to call_tax, call_compliance, or aggregate)
+    # Dispatch thẳng từ analyze_and_route — bỏ node check_routing riêng biệt
     graph.add_conditional_edges(
-        "check_routing",
+        "analyze_and_route",
         route_to_subagents,
         ["call_tax", "call_compliance", "aggregate"],
     )
