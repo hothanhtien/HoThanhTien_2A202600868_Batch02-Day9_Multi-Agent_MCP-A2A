@@ -1,5 +1,7 @@
 # Legal Multi-Agent System with A2A Protocol
 
+Họ Tên: Hồ Thành Tiến
+
 A distributed legal advisory system where specialised AI agents collaborate using Google's [Agent-to-Agent (A2A) protocol](https://github.com/google/A2A). Built with **LangGraph**, **LangChain**, and the **a2a-sdk**, the project serves as both a working demo and a hands-on learning path — progressing from a simple LLM API call (Stage 1) to a fully distributed multi-agent network (Stage 5).
 
 ## Architecture
@@ -28,13 +30,13 @@ All agent discovery is dynamic — agents register their capabilities with the *
 
 ### Agent Details
 
-| Agent | Port | LangGraph Pattern | Role |
-|---|---|---|---|
-| Customer Agent | 10100 | `create_react_agent` | Entry point — routes user questions to Law Agent |
-| Law Agent | 10101 | Custom `StateGraph` | Orchestrator — analyses law, delegates in parallel |
-| Tax Agent | 10102 | `create_react_agent` | Specialist — tax law, IRS, penalties, FBAR/FATCA |
-| Compliance Agent | 10103 | `create_react_agent` | Specialist — SEC, SOX, FCPA, GDPR, AML |
-| Registry | 10000 | FastAPI (not an agent) | Service discovery and agent registration |
+| Agent            | Port  | LangGraph Pattern      | Role                                                |
+| ---------------- | ----- | ---------------------- | --------------------------------------------------- |
+| Customer Agent   | 10100 | `create_react_agent` | Entry point — routes user questions to Law Agent   |
+| Law Agent        | 10101 | Custom `StateGraph`  | Orchestrator — analyses law, delegates in parallel |
+| Tax Agent        | 10102 | `create_react_agent` | Specialist — tax law, IRS, penalties, FBAR/FATCA   |
+| Compliance Agent | 10103 | `create_react_agent` | Specialist — SEC, SOX, FCPA, GDPR, AML             |
+| Registry         | 10000 | FastAPI (not an agent) | Service discovery and agent registration            |
 
 ### Request Flow
 
@@ -61,13 +63,13 @@ User question
 
 ## Tech Stack
 
-| Layer | Choice |
-|---|---|
-| Agent framework | [LangGraph](https://langchain-ai.github.io/langgraph/) |
-| LLM provider | Any model via [OpenRouter](https://openrouter.ai) (OpenAI-compatible API) |
-| A2A transport | [a2a-sdk](https://pypi.org/project/a2a-sdk/) |
-| Registry | FastAPI + in-memory store |
-| Package manager | [uv](https://docs.astral.sh/uv/) |
+| Layer           | Choice                                                                |
+| --------------- | --------------------------------------------------------------------- |
+| Agent framework | [LangGraph](https://langchain-ai.github.io/langgraph/)                   |
+| LLM provider    | Any model via[OpenRouter](https://openrouter.ai) (OpenAI-compatible API) |
+| A2A transport   | [a2a-sdk](https://pypi.org/project/a2a-sdk/)                             |
+| Registry        | FastAPI + in-memory store                                             |
+| Package manager | [uv](https://docs.astral.sh/uv/)                                         |
 
 ## 📚 Codelab for Students
 
@@ -147,13 +149,13 @@ uv run python stages/stage_4_multi_agent/main.py
 
 The `stages/` folder contains progressive demos that build from simple to complex, matching the roadmap in `docs/10_llm_roadmap.svg`:
 
-| Stage | Name | What It Demonstrates |
-|---|---|---|
-| **1** | Direct LLM Calling | Stateless prompt → response. No tools, no memory. |
-| **2** | LLM + RAG / Tools | Tool calling with a keyword-match knowledge base and damage calculator. Manual single-pass orchestration. |
-| **3** | Single Agent (ReAct) | Autonomous Think → Act → Observe loop via `create_react_agent`. Agent decides which tools to call and when. |
-| **4** | Multi-Agent (In-Process) | Multiple specialised agents with parallel execution via `StateGraph` + `Send` API. Same topology as Stage 5 but in a single process. |
-| **5** | Distributed A2A (This Project) | Full distributed system — each agent is an independent HTTP service communicating via A2A protocol with dynamic discovery. |
+| Stage       | Name                           | What It Demonstrates                                                                                                                     |
+| ----------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **1** | Direct LLM Calling             | Stateless prompt → response. No tools, no memory.                                                                                       |
+| **2** | LLM + RAG / Tools              | Tool calling with a keyword-match knowledge base and damage calculator. Manual single-pass orchestration.                                |
+| **3** | Single Agent (ReAct)           | Autonomous Think → Act → Observe loop via `create_react_agent`. Agent decides which tools to call and when.                          |
+| **4** | Multi-Agent (In-Process)       | Multiple specialised agents with parallel execution via `StateGraph` + `Send` API. Same topology as Stage 5 but in a single process. |
+| **5** | Distributed A2A (This Project) | Full distributed system — each agent is an independent HTTP service communicating via A2A protocol with dynamic discovery.              |
 
 Each stage's folder includes an `architecture.svg` diagram and a self-contained `main.py`.
 
@@ -187,17 +189,18 @@ legal_multiagent/
 ```
 
 Each agent module follows the same structure:
+
 - **`graph.py`** — LangGraph graph definition (all agent logic)
 - **`agent_executor.py`** — Bridge between A2A SDK and LangGraph
 - **`__main__.py`** — Server bootstrap, agent card, registration
 
 ## Configuration
 
-| Environment Variable | Description | Default |
-|---|---|---|
-| `OPENROUTER_API_KEY` | Your OpenRouter API key | (required) |
-| `OPENROUTER_MODEL` | Model identifier | `anthropic/claude-sonnet-4-5` |
-| `REGISTRY_URL` | Registry service URL | `http://localhost:10000` |
+| Environment Variable   | Description             | Default                         |
+| ---------------------- | ----------------------- | ------------------------------- |
+| `OPENROUTER_API_KEY` | Your OpenRouter API key | (required)                      |
+| `OPENROUTER_MODEL`   | Model identifier        | `anthropic/claude-sonnet-4-5` |
+| `REGISTRY_URL`       | Registry service URL    | `http://localhost:10000`      |
 
 The model is swappable to any OpenRouter-supported model (e.g., `openai/gpt-4o`, `google/gemini-2.0-flash`).
 
@@ -205,15 +208,15 @@ The model is swappable to any OpenRouter-supported model (e.g., `openai/gpt-4o`,
 
 The `docs/` folder contains SVG architecture diagrams:
 
-| Diagram | Topic |
-|---|---|
-| `01_why_multiagent` | Why multi-agent over monolithic LLMs |
-| `02_a2a_vs_traditional` | A2A protocol vs traditional multi-agent |
-| `03_a2a_protocol` | A2A protocol technical details |
-| `04_system_architecture` | Full system architecture |
-| `05_law_agent_graph` | Law Agent StateGraph deep dive |
-| `06_request_flow` | End-to-end request flow with trace propagation |
-| `07_a2a_intro` | Introduction to A2A protocol |
-| `08_a2a_core_concepts` | A2A core concepts (Agent Cards, Tasks, Parts) |
-| `09_a2a_interaction_flow` | A2A interaction flow patterns |
-| `10_llm_roadmap` | LLM evolution roadmap (Stages 1–5) |
+| Diagram                     | Topic                                          |
+| --------------------------- | ---------------------------------------------- |
+| `01_why_multiagent`       | Why multi-agent over monolithic LLMs           |
+| `02_a2a_vs_traditional`   | A2A protocol vs traditional multi-agent        |
+| `03_a2a_protocol`         | A2A protocol technical details                 |
+| `04_system_architecture`  | Full system architecture                       |
+| `05_law_agent_graph`      | Law Agent StateGraph deep dive                 |
+| `06_request_flow`         | End-to-end request flow with trace propagation |
+| `07_a2a_intro`            | Introduction to A2A protocol                   |
+| `08_a2a_core_concepts`    | A2A core concepts (Agent Cards, Tasks, Parts)  |
+| `09_a2a_interaction_flow` | A2A interaction flow patterns                  |
+| `10_llm_roadmap`          | LLM evolution roadmap (Stages 1–5)            |
